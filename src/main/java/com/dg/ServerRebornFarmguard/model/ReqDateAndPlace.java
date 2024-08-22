@@ -1,5 +1,9 @@
 package com.dg.ServerRebornFarmguard.model;
 
+
+import lombok.ToString;
+
+@ToString
 public class ReqDateAndPlace {
     private String date;
     private String place;
@@ -20,4 +24,6 @@ public class ReqDateAndPlace {
     public void setPlace(String place) {
         this.place = place;
     }
+
+
 }

@@ -55,7 +55,6 @@ public class MainReports {
         // Получение данных из базы данных
         List<Map<String, Object>> movements = jdbcTemplate.queryForList("SELECT * FROM movements");
 
-        // Создание книги и листа с использованием XSSF для .xlsx формата
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("Перемещения");
         /*Стили*/
@@ -428,7 +427,6 @@ public class MainReports {
                     if (startMergeRow != -1 && userName.equals(currentUser)) {
 
                         Cell shiftTotalCell = sheet.getRow(startMergeRow).createCell(9);
-                        // это может вызвать ошибку - если кто-то закрыл но карту не приложил
 
                         String itogString = (String) movement.get("open_close_time");
                         LocalTime itogTime = null;
@@ -498,8 +496,8 @@ public class MainReports {
 
 
                         startMergeRow = -1;
-                        totalEffectiveDuration = Duration.ZERO; // Reset for next shift
-                        currentUser = null;//?
+                        totalEffectiveDuration = Duration.ZERO;
+                        currentUser = null;
                     }
                 }
                 rowNum++;
@@ -1141,7 +1139,7 @@ public class MainReports {
             }
 //ЕСЛИ НЕ ХАБ
         }else {
-            // Получение данных из базы данных за указанный период
+
             List<Map<String, Object>> movements = jdbcTemplate.queryForList("SELECT * FROM movements WHERE place = ? AND date BETWEEN ? AND ?", place, startDate, endDate);
 
 
@@ -1384,12 +1382,12 @@ public class MainReports {
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-        // Разбиваем строку на две даты
+
         String[] dates = dateRange.split("/");
         LocalDate startDate = LocalDate.parse(dates[0], formatter);
         LocalDate endDate = LocalDate.parse(dates[1], formatter);
 
-        // Получение данных из базы данных за указанный период
+
         List<Map<String, Object>> movements = jdbcTemplate.queryForList("SELECT * FROM movements WHERE department_user = ? AND date BETWEEN ? AND ?", department, startDate, endDate);
 
 
@@ -1397,7 +1395,7 @@ public class MainReports {
             System.out.println("Лист пустой");
             return new byte[1];
         }
-        // Создание книги и листа с использованием XSSF для .xlsx формата
+
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("Перемещения");
         /*Стили*/

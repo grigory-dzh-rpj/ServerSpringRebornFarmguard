@@ -17,6 +17,7 @@ import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.request.SendPhoto;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -74,19 +75,35 @@ public class TelegramBotService {
 
 
 
+    @Value("${telegramMain.token.test}")
+    private String telegramTokenMainTest;
+
+    @Value("${telegramStatus.token.test}")
+    private String telegramTokenStatusTest;
+
+    @Value("${telegramMain.token.prod}")
+    private String telegramTokenMainProd;
+
+    @Value("${telegramStatus.token.prod}")
+    private String telegramTokenStatusProd;
+
+
+
     @PostConstruct
     public void init() {
 
-////ОСНОВНЫЕ БОТЫ
-//      createBot("6934516863:AAEYg1u1zKmelzVqRBavR66ZOJKIg5nCfEU");
-//
-//      createBotStatus("6784964838:AAFjhqGhE9LrO-QhWvjCOVp_TO_43oeribg");
+        //ОСНОВНЫЕ БОТЫ
+//      createBot(telegramTokenMainProd);
+
+//      createBotStatus(telegramTokenStatusProd);
 
 
-//
-//      //test
-      createBotStatus("7384285202:AAFMtdJw-mkauJMUbSaM0u4UuzWkDnze6LE");
-      createBot("1223949547:AAF44BsdH6Nj7B-uAcb3hJVKgX22eeP1t_o");
+
+//      //Test
+
+      createBot(telegramTokenMainTest);
+      createBotStatus(telegramTokenStatusTest);
+
 
 
 
@@ -435,9 +452,8 @@ public class TelegramBotService {
 
      /** Возвращаем клавиатуру для отправки контакта при регистрации*/
     private Keyboard keyboardContact(){
-        Keyboard keyboard = new ReplyKeyboardMarkup(
+        return new ReplyKeyboardMarkup(
                 new KeyboardButton("Отправить контакт").requestContact(true));
-        return keyboard;
     }
 
 
@@ -506,8 +522,7 @@ public class TelegramBotService {
     private String createHintDateRange() {
         LocalDate today = LocalDate.now();
         LocalDate tomorrow = today.plusDays(1);
-        String dateRangeString = today+ "/" + tomorrow;
-        return dateRangeString;
+        return today+ "/" + tomorrow;
     }
 
     /** Возвращает список чат-айди всех пользователей*/
@@ -657,24 +672,21 @@ public class TelegramBotService {
     private String getFirstDayOfMonth() {
         LocalDate today = LocalDate.now();
         LocalDate firstDayOfMonth = today.withDayOfMonth(1);
-        String formatter = firstDayOfMonth.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
-        return formatter;
+        return firstDayOfMonth.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     }
 
     private String getLastDayOfMonth() {
         LocalDate today = LocalDate.now();
         LocalDate lastDayOfMonth = today.withDayOfMonth(today.lengthOfMonth());
-        String formatter = lastDayOfMonth.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
 
-        return formatter;
+        return lastDayOfMonth.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     }
 
     private String getNowDayOfMonth(){
         LocalDate today = LocalDate.now();
-        String formatter = today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        return formatter;
+        return today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     }
 
     private String findUserIdByName(String name){
@@ -1328,7 +1340,8 @@ public class TelegramBotService {
                 break;
             // АДМИН ПАНЕЛЬ
             /* Приход/Уход */
-            case WAITING_FOR_ADMIN:  // Для удаленного прихода и ухода
+            // Для удаленного прихода и ухода
+            case WAITING_FOR_ADMIN:
 
                 if (text.equals("Назад")) {
                     chatStates.put(chatId, BotState.WAITING_ADMIN_PANEL);
@@ -1408,7 +1421,7 @@ public class TelegramBotService {
 
 
             default:
-                // Обработайте неожиданное состояние
+
                 break;
 
 
@@ -1420,12 +1433,12 @@ public class TelegramBotService {
     /** Проверка валидацим дат*/
     public  boolean isValidDate(String dateString) {
         if (dateString == null || dateString.isEmpty()) {
-            return false; // Пустая строка не является датой
+            return false;
         }
 
         String[] parts = dateString.split("/");
         if (parts.length != 2) {
-            return false; // Неверный формат
+            return false;
         }
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -1434,9 +1447,9 @@ public class TelegramBotService {
             LocalDate startDate = LocalDate.parse(parts[0], formatter);
             LocalDate endDate = LocalDate.parse(parts[1], formatter);
 
-            return startDate.isBefore(endDate) || startDate.isEqual(endDate); // Проверяем, что начальная дата не позже конечной
+            return startDate.isBefore(endDate) || startDate.isEqual(endDate);
         } catch (DateTimeParseException e) {
-            return false; // Неверный формат даты
+            return false;
         }
     }
 

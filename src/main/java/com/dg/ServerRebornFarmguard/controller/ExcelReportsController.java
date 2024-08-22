@@ -2,10 +2,9 @@ package com.dg.ServerRebornFarmguard.controller;
 
 import com.dg.ServerRebornFarmguard.exception.ExceptionHttp;
 import com.dg.ServerRebornFarmguard.model.ReqDateBetweenAndNameUserAndPlace;
-import com.dg.ServerRebornFarmguard.service.MovementsService;
 import com.dg.ServerRebornFarmguard.service.reports.excel.CreateDiagrams;
 import com.dg.ServerRebornFarmguard.service.reports.excel.MainReports;
-import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
@@ -19,11 +18,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 
 @RestController
 @RequestMapping("/excel")
+@Slf4j
 public class ExcelReportsController {
+
+
 
     @Autowired
     MainReports mainReports;
@@ -31,9 +32,8 @@ public class ExcelReportsController {
     @Autowired
     CreateDiagrams createDiagrams;
 
-    /*Excel отчет- */
+    /*Excel отчет */
 
-//    generateExcelForDateBetweenAndUserName
 
     @PostMapping("/excelDateBetweenAndUserName")
     public ResponseEntity<byte[]> generateExcelForDateBetweenAndUserName(@RequestBody ReqDateBetweenAndNameUserAndPlace req) {
@@ -44,7 +44,7 @@ public class ExcelReportsController {
                     .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                     .body(bytes);
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Ошибка при генерации Excel: ", e);
             return ExceptionHttp.MainExeption();
         }
     }
@@ -58,7 +58,7 @@ public class ExcelReportsController {
                     .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                     .body(bytes);
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Ошибка при генерации Excel: ", e);
             return ExceptionHttp.MainExeption();
         }
     }
@@ -74,12 +74,12 @@ public class ExcelReportsController {
                     .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                     .body(bytes);
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Ошибка при генерации Excel: ", e);
             return ExceptionHttp.MainExeption();
         }
     }
 
-    /*диаграмма*/
+    /*Диаграмма*/
     @PostMapping("/createDiagram")
     public ResponseEntity<ByteArrayResource> diagramaEff(@RequestBody ReqDateBetweenAndNameUserAndPlace req) {
         try {
@@ -94,7 +94,7 @@ public class ExcelReportsController {
             headers.setContentType(MediaType.IMAGE_PNG);
             return new ResponseEntity<>(resource, headers, HttpStatus.OK);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Ошибка при генерации Excel: ", e);
             return ExceptionHttp.MainExeption();
         }
     }
@@ -107,7 +107,7 @@ public class ExcelReportsController {
             String effTime = createDiagrams.effectiveTimeByName(req.getNameUser(), req.getDateFrom(), req.getDateTo());
             return ResponseEntity.ok(effTime);
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Ошибка при расчете EffTime: ", e);
             return ExceptionHttp.MainExeption();
         }
     }
@@ -118,7 +118,7 @@ public class ExcelReportsController {
             String totalTimeByName = createDiagrams.totalTimeByName(req.getNameUser(), req.getDateFrom(), req.getDateTo());
             return ResponseEntity.ok(totalTimeByName);
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Ошибка при расчете TotalTime: ", e);
             return ExceptionHttp.MainExeption();
         }
     }

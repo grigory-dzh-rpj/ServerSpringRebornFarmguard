@@ -19,38 +19,42 @@ import static com.dg.ServerRebornFarmguard.service.TelegramBotService.bot_status
 public class CheckStatusPlacePlatsService {
 
     @Autowired
-    PlaceService placeService;
+    private PlaceService placeService;
 
     private static final int TIMEOUT_SECONDS = 20;
     private final Map<String, Long> lastRequestTimes = new ConcurrentHashMap<>();
-    private final Map<String, Boolean> arduinoStatuses = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> espStatuses = new ConcurrentHashMap<>();
+    private final Map<Long, Integer> chatMessageIds = new ConcurrentHashMap<>();
+    private static final String POINT_EMOJI = "\uD83D\uDCCD"; // 📍
+    private static final String GREEN_CHECK_EMOJI = "✅";
+    private static final String RED_CROSS_EMOJI = "❌";
 
     public void updateLastRequestTime(String macAddress) {
         lastRequestTimes.put(macAddress, System.currentTimeMillis());
-        arduinoStatuses.put(macAddress, true);
+        espStatuses.put(macAddress, true);
     }
 
     /** */
     @PostConstruct // Инициализация при запуске приложения
-    public void initArduinoStatuses() {
+    public void initEspStatuses() {
         List<PlaceEntity> placeEntityList = placeService.returnAllPlaceEntity();
 
         for (PlaceEntity placeEntity : placeEntityList) {
             String macAddress = placeEntity.getMacPlace();
             lastRequestTimes.put(macAddress, 0L); // Инициализация с нулевым временем
-            arduinoStatuses.put(macAddress, true); // Инициализация с false
+            espStatuses.put(macAddress, true); // Инициализация с false
         }
     }
 
 
     @Scheduled(fixedRate = 2000)
-    public void checkArduinoStatus() {
+    public void checkEspStatus() {
         long currentTime = System.currentTimeMillis();
         for (Map.Entry<String, Long> entry : lastRequestTimes.entrySet()) {
             String macAddress = entry.getKey();
             long lastRequestTime = entry.getValue();
             if (currentTime - lastRequestTime > TIMEOUT_SECONDS * 1000) {
-                arduinoStatuses.put(macAddress, false);
+                espStatuses.put(macAddress, false);
             }
 
         }
@@ -60,6 +64,8 @@ public class CheckStatusPlacePlatsService {
     @Scheduled(fixedRate = 10000)
     public void sendMessageByBotStatus() {
         List<PlaceEntity> placeEntityList = placeService.returnAllPlaceEntity();
+
+        //Надо вынести наружу!!!!
         List<Long> chatIds = Arrays.asList(667788774L, 929477908L, 5087116051L, 1139708989L, 434612982L, 2057585812L, 453373063L );
 
 
@@ -68,7 +74,7 @@ public class CheckStatusPlacePlatsService {
 
             for (PlaceEntity placeEntity : placeEntityList) {
                 String placeName = placeEntity.getNamePlace();
-                boolean isOnline = isArduinoOnline(placeEntity.getMacPlace());
+                boolean isOnline = isEspOnline(placeEntity.getMacPlace());
 
                 messageBuilder.append(POINT_EMOJI)
                         .append(" ")
@@ -101,7 +107,7 @@ public class CheckStatusPlacePlatsService {
                     PinChatMessage pinChatMessage = new PinChatMessage(chatId.toString(), messageId);
                     bot_status.execute(pinChatMessage);
                 }catch (NullPointerException e){
-//                    System.out.println("Кому-то не отрпавлено!");
+                    System.out.println("Кому-то не отрпавлено!");
                 }
 
             }
@@ -122,7 +128,7 @@ public class CheckStatusPlacePlatsService {
             for (PlaceEntity placeEntity : placeEntityList) {
                 String macPlace = placeEntity.getMacPlace();
                 String placeName = placeEntity.getNamePlace();
-                boolean isOnline = isArduinoOnline(macPlace);
+                boolean isOnline = isEspOnline(macPlace);
 
                 if (!isOnline) {
                     if (!previousOffline.contains(macPlace)) {
@@ -164,24 +170,8 @@ public class CheckStatusPlacePlatsService {
 
 
 
-
-
-        private final Map<Long, Integer> chatMessageIds = new ConcurrentHashMap<>();
-        private static final String POINT_EMOJI = "\uD83D\uDCCD"; // 📍
-        private static final String GREEN_CHECK_EMOJI = "✅";
-        private static final String RED_CROSS_EMOJI = "❌";
-
-
-
-
-
-
-
-
-
-
-    public boolean isArduinoOnline(String macAddress) {
-        return arduinoStatuses.getOrDefault(macAddress, false);
+    public boolean isEspOnline(String macAddress) {
+        return espStatuses.getOrDefault(macAddress, false);
     }
 
     private void sendMessageByStatusForSYSADMIN(){

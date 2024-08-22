@@ -9,13 +9,11 @@ import com.dg.ServerRebornFarmguard.model.ReqDateBetweenAndNameUserAndPlace;
 import com.dg.ServerRebornFarmguard.service.MovementsService;
 import com.dg.ServerRebornFarmguard.service.TelegramBotService;
 import com.dg.ServerRebornFarmguard.service.reports.excel.MainReports;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -23,6 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/move")
+@Slf4j
 public class MovementsController {
 
     @Autowired
@@ -36,45 +35,31 @@ public class MovementsController {
         try {
             return ResponseEntity.ok(movementsService.logic(macIdPrefix));
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Ошибка в logic", e);
             return ExceptionHttp.MainExeption();
         }
     }
 
 
-    /*for sockets*/
-
-//    @Autowired
-//    private SimpMessagingTemplate messagingTemplate;
-//
-//    @MessageMapping("/logic")
-//    @SendTo("/topic/responses")
-//    public String handleLogic(String macIdPrefix) {
-//        String response = movementsService.logic(macIdPrefix);
-//        messagingTemplate.convertAndSend("/topic/responses", response);
-//        return "OK";
-//    }
-
-    /**/
 
     @PostMapping("/close")
-    public ResponseEntity closing(@RequestBody Long id){
+    public ResponseEntity<String> closing(@RequestBody Long id){
         try {
           String s =  movementsService.closeStatus(id);
             return ResponseEntity.ok(s);
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Ошибка в close", e);
             return ExceptionHttp.MainExeption();
         }
     }
 
     @PostMapping("/closeByName")
-    public ResponseEntity closingByName(@RequestBody String name){
+    public ResponseEntity<String> closingByName(@RequestBody String name){
         try {
             String s =  movementsService.closeStatusByName(name);
             return ResponseEntity.ok(s);
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Ошибка в closeByName", e);
             return ExceptionHttp.MainExeption();
         }
     }
@@ -82,9 +67,10 @@ public class MovementsController {
     @PostMapping("/nowOnPlace")
     public  ResponseEntity<List<MovementsEntity>> nowOnPlace(@RequestBody String place){
         try{
-            List<MovementsEntity> movementsEntites = movementsService.nowOnPlace(place);
-            return ResponseEntity.ok(movementsEntites);
+            List<MovementsEntity> movementsEntities = movementsService.nowOnPlace(place);
+            return ResponseEntity.ok(movementsEntities);
         }catch (Exception e){
+            log.error("Ошибка в nowOnPlace", e);
             return ExceptionHttp.MainExeption();
 
         }
@@ -92,10 +78,11 @@ public class MovementsController {
 
 
 
+
     @GetMapping("/startBot")
     public ResponseEntity<String> startBot(){
         TelegramBotService telegramBotService = new TelegramBotService();
-        telegramBotService.createBot("6784964838:AAFjhqGhE9LrO-QhWvjCOVp_TO_43oeribg");
+        //<>
         return ResponseEntity.ok("Бот запущен");
     }
 

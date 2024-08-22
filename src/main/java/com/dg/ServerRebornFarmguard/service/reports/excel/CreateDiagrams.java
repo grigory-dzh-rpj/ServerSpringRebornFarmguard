@@ -4,6 +4,7 @@ import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.request.SendPhoto;
 
 
+import lombok.extern.slf4j.Slf4j;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.labels.PieSectionLabelGenerator;
@@ -41,6 +42,7 @@ import java.util.Map;
 
 
 @Component
+@Slf4j
 public class CreateDiagrams {
 
 
@@ -80,7 +82,7 @@ public class CreateDiagrams {
             int fullTime = 0;
             for (Map<String, Object> row : results) {
                 String place = (String) row.get("place");
-                String effTime = (String) row.get("eff_time"); // Извлечение значения eff_time как строки
+                String effTime = (String) row.get("eff_time");
 
                 String[] strings = effTime.split(":");
                 String onMapTime = strings[0] + ":" + strings[1];
@@ -172,7 +174,7 @@ public class CreateDiagrams {
             plot.setLabelOutlinePaint(null);
             plot.setLabelShadowPaint(null);
 
-            // Добавление градиента и тени
+
             plot.setSectionOutlinesVisible(false);
             plot.setShadowPaint(new GradientPaint(
                     new Point(0, 0), new Color(147, 112, 219),
@@ -186,7 +188,7 @@ public class CreateDiagrams {
             legend.setBackgroundPaint(new Color(147, 112, 219, 100));
             legend.setItemPaint(Color.WHITE);
 
-            int width = 600; // Увеличим размер для лучшей детализации
+            int width = 600;
             int height = 400;
 
             BufferedImage chartImage = pieChart.createBufferedImage(width, height);
@@ -199,13 +201,14 @@ public class CreateDiagrams {
             tempFile.deleteOnExit();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Ошибка при генерации:", e);
             if(tempFile != null) {
                 tempFile.deleteOnExit();
             }
         }finally {
 
-        tempFile.deleteOnExit();
+            assert tempFile != null;
+            tempFile.deleteOnExit();
      }
     }
 
@@ -350,7 +353,7 @@ public class CreateDiagrams {
 
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Ошибка при генерации:", e);
             if(tempFile != null) {
                 tempFile.deleteOnExit();
             }
