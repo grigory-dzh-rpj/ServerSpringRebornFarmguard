@@ -687,9 +687,7 @@ public class MovementsService {
         int val = 7;
 
         LocalDate today = LocalDate.now();
-        // Получить вчерашнюю дату
         LocalDate tomorrow = today.minusDays(1);
-        // Получить список всех пользователей, которые не закрыли смену ("open")
 
         List<MovementsEntity> openMovements = movementsRepo.findLastRecordsWithinDateRange(tomorrow.toString(), today.toString());
 
@@ -697,10 +695,8 @@ public class MovementsService {
         for (MovementsEntity movement : openMovements) {
 
 
-            // Получить время последнего  выхода
             LocalTime lastExitTime = LocalTime.parse(movement.getExitTime(), TIME_FORMATTER);
 
-            // Получить текущее время
             LocalDateTime now = LocalDateTime.now();
 
             // Проверить, прошло ли 8 часов

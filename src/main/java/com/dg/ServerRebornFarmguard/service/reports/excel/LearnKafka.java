@@ -12,24 +12,24 @@ import org.springframework.stereotype.Service;
 public class LearnKafka {
 
 
-    @Autowired
-    KafkaProducer kafkaProducer ;
-
-    @Autowired
-    KafkaConsumer kafkaConsumer;
-
-    @InjectRandomWord(randomWord = "Опа сработало")
-    private String randomWord;
-
-    public void sendHello(){
-
-        kafkaProducer.sendMessage(randomWord);
-
-    }
-
-    public void sendMessage(String message){
-        kafkaProducer.sendMessage(message);
-    }
+//    @Autowired
+//    KafkaProducer kafkaProducer ;
+//
+//    @Autowired
+//    KafkaConsumer kafkaConsumer;
+//
+//    @InjectRandomWord(randomWord = "Опа сработало")
+//    private String randomWord;
+//
+//    public void sendHello(){
+//
+//        kafkaProducer.sendMessage(randomWord);
+//
+//    }
+//
+//    public void sendMessage(String message){
+//        kafkaProducer.sendMessage(message);
+//    }
 
 
 

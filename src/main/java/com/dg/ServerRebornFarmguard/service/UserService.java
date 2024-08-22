@@ -7,12 +7,15 @@ import com.dg.ServerRebornFarmguard.repository.UserRepo;
 import org.apache.xmlbeans.impl.xb.xsdschema.Attribute;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@EnableScheduling
 public class UserService {
 
     @Autowired
@@ -29,6 +32,11 @@ public class UserService {
            usersNames.add(entity.getName());
        }
        return usersNames;
+    }
+
+    @Scheduled(fixedRate = 1000)
+    public void tetp(){
+        System.out.println("Идет работа");
     }
 
     public List<UserEntity> findByPos(String pos) {

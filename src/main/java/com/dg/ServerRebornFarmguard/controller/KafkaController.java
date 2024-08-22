@@ -13,22 +13,22 @@ import java.util.Map;
 @RequestMapping("/kafka")
 public class KafkaController {
 
-    @Autowired
-    LearnKafka learnKafka;
-
-    @PostMapping("/hello")
-    public String helloKafka(){
-        learnKafka.sendHello();
-        return "Топик пополнен";
-    }
-
-    @PostMapping("/m")
-    public String message(@RequestBody String string){
-
-        learnKafka.sendMessage(string);
-        learnKafka.sendHello();
-        return "Топик пополнен : "+ string;
-    }
+//    @Autowired
+//    LearnKafka learnKafka;
+//
+//    @PostMapping("/hello")
+//    public String helloKafka(){
+//        learnKafka.sendHello();
+//        return "Топик пополнен";
+//    }
+//
+//    @PostMapping("/m")
+//    public String message(@RequestBody String string){
+//
+//        learnKafka.sendMessage(string);
+//        learnKafka.sendHello();
+//        return "Топик пополнен : "+ string;
+//    }
 
 
 

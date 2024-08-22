@@ -1,7 +1,9 @@
 package com.dg.ServerRebornFarmguard.service;
 
 import com.dg.ServerRebornFarmguard.entity.PlaceEntity;
-import com.pengrad.telegrambot.request.*;
+import com.pengrad.telegrambot.request.EditMessageText;
+import com.pengrad.telegrambot.request.PinChatMessage;
+import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +11,13 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.dg.ServerRebornFarmguard.service.TelegramBotService.bot_status;
@@ -19,7 +27,7 @@ import static com.dg.ServerRebornFarmguard.service.TelegramBotService.bot_status
 public class CheckStatusPlacePlatsService {
 
     @Autowired
-    private PlaceService placeService;
+    public PlaceService placeService;
 
     private static final int TIMEOUT_SECONDS = 20;
     private final Map<String, Long> lastRequestTimes = new ConcurrentHashMap<>();
@@ -65,10 +73,8 @@ public class CheckStatusPlacePlatsService {
     public void sendMessageByBotStatus() {
         List<PlaceEntity> placeEntityList = placeService.returnAllPlaceEntity();
 
-        //Надо вынести наружу!!!!
-        List<Long> chatIds = Arrays.asList(667788774L, 929477908L, 5087116051L, 1139708989L, 434612982L, 2057585812L, 453373063L );
-
-
+        List<Long> chatIds = listSysAdmins();
+        System.out.println(chatIds);
         for (Long chatId : chatIds) {
             StringBuilder messageBuilder = new StringBuilder("Статус пунктов:\n\n");
 
@@ -121,7 +127,7 @@ public class CheckStatusPlacePlatsService {
     @Scheduled(fixedRate = 10000)
     public void sendMessageByBotStatus2() {
         List<PlaceEntity> placeEntityList = placeService.returnAllPlaceEntity();
-        List<Long> chatIds = Arrays.asList(667788774L, 929477908L, 5087116051L, 1139708989L, 434612982L, 2057585812L, 453373063L );
+            List<Long> chatIds = listSysAdmins();
 
 
 
@@ -174,8 +180,17 @@ public class CheckStatusPlacePlatsService {
         return espStatuses.getOrDefault(macAddress, false);
     }
 
-    private void sendMessageByStatusForSYSADMIN(){
 
+    public List<Long> listSysAdmins(){
+        List<Long> chatIds;
+        try(BufferedReader bufferedReader = new BufferedReader(new FileReader("/Users/Spring Projects/Beckend Ferma Work Project/SpringFarmguard/src/main/resources/arrayChatIdForStatusBot.txt"))) {
+            chatIds = bufferedReader.lines().map(String::trim).map(Long::parseLong).toList();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println(chatIds);
+        return chatIds;
     }
+
 
 }

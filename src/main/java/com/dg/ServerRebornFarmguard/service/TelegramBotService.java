@@ -105,8 +105,6 @@ public class TelegramBotService {
       createBotStatus(telegramTokenStatusTest);
 
 
-
-
     }
 
     public static TelegramBot getBot() {
@@ -493,7 +491,7 @@ public class TelegramBotService {
         return keyboardMarkup;
     }
 
-    /** Отправка мне Имена тех кто воспользовался ботом*/
+    /** Отправка мне Имен тех кто воспользовался ботом*/
     private void sendMessageByDzhuraevGrigory(Long chatId, String message){
         bot.execute(new SendMessage(667788774, nameUser(chatId) +" - "+message ));
     }
