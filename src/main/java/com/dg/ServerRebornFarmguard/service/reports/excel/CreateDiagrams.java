@@ -4,7 +4,7 @@ import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.request.SendPhoto;
 
 
-import lombok.extern.slf4j.Slf4j;
+
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.labels.PieSectionLabelGenerator;
@@ -42,7 +42,7 @@ import java.util.Map;
 
 
 @Component
-@Slf4j
+//@Slf4j
 public class CreateDiagrams {
 
 
@@ -53,7 +53,6 @@ public class CreateDiagrams {
         LocalDate today = LocalDate.now();
         LocalDate firstDayOfMonth = today.withDayOfMonth(1);
         String formatter = firstDayOfMonth.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-
         return formatter;
     }
 
@@ -201,7 +200,7 @@ public class CreateDiagrams {
             tempFile.deleteOnExit();
 
         } catch (Exception e) {
-            log.error("Ошибка при генерации:", e);
+
             if(tempFile != null) {
                 tempFile.deleteOnExit();
             }
@@ -353,7 +352,6 @@ public class CreateDiagrams {
 
 
         } catch (Exception e) {
-            log.error("Ошибка при генерации:", e);
             if(tempFile != null) {
                 tempFile.deleteOnExit();
             }

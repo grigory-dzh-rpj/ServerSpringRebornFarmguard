@@ -7,14 +7,16 @@ import com.dg.ServerRebornFarmguard.service.reports.excel.CreateDiagrams;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.request.SendMessage;
 import jakarta.annotation.PostConstruct;
-import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,16 +24,15 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.dg.ServerRebornFarmguard.service.TelegramBotService.bot;
 import static com.dg.ServerRebornFarmguard.service.TelegramBotService.getBot;
 
 @Service
 @EnableScheduling
+@Slf4j
 public class MovementsService {
 
     @Autowired
@@ -58,22 +59,20 @@ public class MovementsService {
 
 
 
-    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ, rollbackFor = Exception.class)
     public String logic(String macPrefixAndId){
         String[] split = macPrefixAndId.split("//");
         String idAndPrefix = split[0];
         String mac_board = split[1];
-        System.out.println(mac_board);
+
         String prefix = idAndPrefix.substring(0, 4);
         Long idUser = Long.valueOf(idAndPrefix.substring(4));
 
         if(!flag.get()) {
-            System.out.println("Логика работает");
 
             if (!itsInDatabase(idUser)) {
                 return "not_validation";
             }
-
 
 
             //Если хаб
@@ -114,9 +113,9 @@ public class MovementsService {
                 bot_send_message_by_chat_id(user.getChatId(), message);
                 bot_send_message_by_chat_id(user.getChatId(), message2);
             }else{
-                System.out.println("Чат id NULL");
+
             }
-            System.out.println("Подождите идет переоткрытие !");
+
             return "not_validation";
         }
 
@@ -124,7 +123,7 @@ public class MovementsService {
 
 
     //Приход
-
+    @Transactional(isolation = Isolation.REPEATABLE_READ, rollbackFor = Exception.class)
     public String writeComingTime(Long id, String mac_board) {
 
         try {
@@ -167,7 +166,7 @@ public class MovementsService {
 
 
     //Уход
-//    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ, rollbackFor = Exception.class)
     public String writeExitTime(Long id, String mac_board){
         MovementsEntity movementsEntity = movementsRepo.findByIdUserAndExitTimeIsNull(id);
         String place = getPlace(mac_board.trim());
@@ -202,23 +201,7 @@ public class MovementsService {
 
 
 
-    public void writeComingAndExitTimeAfterMidnight2(Long id, String place) {
 
-        UserEntity entityUser = serviceUser.findByUserId(id);
-        MovementsEntity movementsEntity = new MovementsEntity();
-
-        movementsEntity.setIdUser(id);
-        movementsEntity.setNameUser(entityUser.getName());
-        movementsEntity.setPositionUser(entityUser.getPosition());
-        movementsEntity.setDepartmentUser(entityUser.getDepartment());
-        movementsEntity.setComingTime("00:00");
-        movementsEntity.setDate(dateNow());
-        movementsEntity.setPlace(place);
-        movementsEntity.setOpenClose("open");
-
-        movementsRepo.save(movementsEntity);
-
-    }
 
 
     //Проверка есть ли сейчас на пункте
@@ -254,8 +237,6 @@ public class MovementsService {
     }
 
     //Закрыта ли смена?
-
-
     public boolean itsHaveClose(MovementsEntity entity){
         if(entity == null){
             return false;
@@ -360,6 +341,11 @@ public class MovementsService {
 
 
     //Меняем статус на закрытие смены
+    @Transactional(
+            propagation = Propagation.REQUIRES_NEW,
+            isolation = Isolation.REPEATABLE_READ,
+            rollbackFor = Exception.class
+    )
     public String closeStatus(Long id){
         Optional<MovementsEntity> lastMovementOptional = movementsRepo.findTopByIdUserOrderByIdmovementsDesc(id);
         if (lastMovementOptional.isPresent()) {
@@ -399,6 +385,11 @@ public class MovementsService {
     }
 
 
+    @Transactional(
+            propagation = Propagation.REQUIRES_NEW,
+            isolation = Isolation.REPEATABLE_READ,
+            rollbackFor = Exception.class
+    )
     public void closeWriteTimeForAuto(Long id, LocalTime timeLastExit) {
         Optional<MovementsEntity> lastMovementOptional = movementsRepo.findTopByIdUserOrderByIdmovementsDesc(id);
 
@@ -408,12 +399,8 @@ public class MovementsService {
 
             if (openMovementOptional.isPresent()) {
                 MovementsEntity openMovement = openMovementOptional.get();
-                LocalDate openDate = LocalDate.parse(openMovement.getDate(),DATE_FORMATTER);
-                LocalDate closeDate = LocalDate.parse(lastMovement.getDate(), DATE_FORMATTER);
-
 
                     LocalTime comingTime = LocalTime.parse(openMovement.getComingTime(), DateTimeFormatter.ofPattern("HH:mm"));
-                    LocalTime now = LocalTime.now();
 
                     Duration duration = Duration.between(comingTime, timeLastExit).abs();
                     long hours = duration.toHours();
@@ -678,6 +665,7 @@ public class MovementsService {
 
 
 
+
     /****** Автозакрытие через 8 часов*/
 //    @Scheduled(fixedRate = 10000)
     @Scheduled(fixedRate = 1800000)
@@ -721,80 +709,208 @@ public class MovementsService {
     }
 
 
-    private  AtomicBoolean flag = new AtomicBoolean(false);
+//    private  AtomicBoolean flag = new AtomicBoolean(false);
+
+
+//    public void writeComingAndOpenNewDayAfterMidnight(Long id, String place) {
+//
+//        UserEntity entityUser = serviceUser.findByUserId(id);
+//        MovementsEntity movementsEntity = new MovementsEntity();
+//
+//        movementsEntity.setIdUser(id);
+//        movementsEntity.setNameUser(entityUser.getName());
+//        movementsEntity.setPositionUser(entityUser.getPosition());
+//        movementsEntity.setDepartmentUser(entityUser.getDepartment());
+//        movementsEntity.setComingTime("00:00");
+//        movementsEntity.setDate(dateNow());
+//        movementsEntity.setPlace(place);
+//        movementsEntity.setOpenClose("open");
+//
+//        movementsRepo.save(movementsEntity);
+//
+//    }
+//
+//
+//
+//        @Scheduled(cron = "20 59 23 * * ?")
+////    @Scheduled(cron = "55 36 12 * * ?")
+//    public void autoCloseAndOpenFor00(){
+//        flag.set(true);
+//        System.out.println("Автопереоткрытие работает");
+//            bot_send_dzh_all("Автопереоткрытие начало работу!");
+//        List<MovementsEntity> entities = movementsRepo.findByExitTimeIsNull();
+//
+//           if (entities == null) {
+//               flag.set(false);
+//               bot_send_dzh_all("Ошибка получения данных из базы данных.");
+//            System.out.println("Ошибка получения данных из базы данных.");
+//            return;
+//        }
+//
+//            if(entities.isEmpty()) {
+//                flag.set(false);
+//                System.out.println("Никому не потребовалось переоткрыть смену");
+//                bot_send_dzh_all("Никому не потребовалось переоткрыть смену");
+//                bot_send_dzh_all("Устновил флаг :"+ flag);
+//                System.out.println("Устновил флаг :"+ flag);
+//                return;
+//            }
+//
+//            System.out.println("entitities не null");
+//
+//            for (MovementsEntity movementsEntity : entities) {
+//                System.out.println("перехожу к итерации");
+//                movementsEntity.setExitTime(localTimeNow());
+//                String timeAtPlace = countingTheTimeAtPlace(movementsEntity.getComingTime(), movementsEntity.getExitTime());
+//                movementsEntity.setTimeAtPlace(timeAtPlace);
+//                String place = movementsEntity.getPlace();
+//                System.out.println("Пункт для переотрктия " + place);
+//                if (movementsEntity.getOpenClose().equals("open")) {
+//
+//                    movementsEntity.setOpenClose("openclose");
+//                } else {
+//                    movementsEntity.setOpenClose("close");
+//                }
+//
+//                movementsRepo.save(movementsEntity);
+//                System.out.println("Сохранил ент");
+//                System.out.println("считаю время");
+//                closeWriteTime(movementsEntity.getIdUser());
+//
+//                if (!place.equals("")) {
+//
+//                    writeComingAndOpenNewDayAfterMidnight(movementsEntity.getIdUser(), place);
+//                    bot_send_dzh_all("Переоткрыл: " + movementsEntity.getNameUser()+ " " + movementsEntity.getPlace());
+//
+//                    System.out.println("Переоткрыл: " + movementsEntity.getNameUser() + movementsEntity.getPlace());
+//                }else{
+//                    System.out.println("Place null ");
+//                }
+//            }
+//            try {
+//                System.out.println("Ждем 70 сек");
+//                Thread.sleep(70000); // 70 секунд
+//
+//            } catch (InterruptedException e) {
+//                Thread.currentThread().interrupt(); // Восстанавливаем прерванное состояние
+//                System.err.println("Thread was interrupted, Failed to complete operation");
+//                flag.set(false);
+//            }finally{
+//                System.out.println("установил флаг в finally");
+//                flag.set(false);
+//                bot_send_dzh_all("Устновил флаг :"+ flag);
+//            }
+//            flag.set(false);
+//            System.out.println("Устновил флаг :"+ flag);
+//
+//    }
 
 
 
-        @Scheduled(cron = "20 59 23 * * ?")
-//    @Scheduled(cron = "55 36 12 * * ?")
-    public void autoCloseAndOpenFor00(){
-        flag.set(true);
-        System.out.println("Автопереоткрытие работает");
-            bot_send_dzh_all("Автопереоткрытие начало работу!");
-        List<MovementsEntity> entities = movementsRepo.findByExitTimeIsNull();
+        private final AtomicBoolean flag = new AtomicBoolean(false);
 
-           if (entities == null) {
-               flag.set(false);
-               bot_send_dzh_all("Ошибка получения данных из базы данных.");
-            System.out.println("Ошибка получения данных из базы данных.");
-            return;
-        }
-
-            if(entities.isEmpty()) {
-                flag.set(false);
-                System.out.println("Никому не потребовалось переоткрыть смену");
-                bot_send_dzh_all("Никому не потребовалось переоткрыть смену");
-                bot_send_dzh_all("Устновил флаг :"+ flag);
-                System.out.println("Устновил флаг :"+ flag);
+        @Scheduled(cron = "0 59 23 * * ?")
+        @Transactional(
+                isolation = Isolation.REPEATABLE_READ,
+                rollbackFor = Exception.class,
+                timeout = 30
+        )
+        public void autoCloseAndOpenFor00() {
+            if (!flag.compareAndSet(false, true)) {
+                log.warn("Предыдущая операция все еще выполняется");
                 return;
             }
 
-            System.out.println("entitities не null");
-
-            for (MovementsEntity movementsEntity : entities) {
-                System.out.println("перехожу к итерации");
-                movementsEntity.setExitTime(localTimeNow());
-                String timeAtPlace = countingTheTimeAtPlace(movementsEntity.getComingTime(), movementsEntity.getExitTime());
-                movementsEntity.setTimeAtPlace(timeAtPlace);
-                String place = movementsEntity.getPlace();
-                System.out.println("Пункт для переотрктия " + place);
-                if (movementsEntity.getOpenClose().equals("open")) {
-
-                    movementsEntity.setOpenClose("openclose");
-                } else {
-                    movementsEntity.setOpenClose("close");
-                }
-
-                movementsRepo.save(movementsEntity);
-                System.out.println("Сохранил ент");
-                System.out.println("считаю время");
-                closeWriteTime(movementsEntity.getIdUser());
-
-                if (!place.equals("")) {
-                    writeComingAndExitTimeAfterMidnight2(movementsEntity.getIdUser(), place);
-                    bot_send_dzh_all("Переоткрыл: " + movementsEntity.getNameUser()+ " " + movementsEntity.getPlace());
-
-                    System.out.println("Переоткрыл: " + movementsEntity.getNameUser() + movementsEntity.getPlace());
-                }else{
-                    System.out.println("Place null ");
-                }
-            }
             try {
-                System.out.println("Ждем 70 сек");
-                Thread.sleep(70000); // 70 секунд
+                log.info("Запуск автоматического переоткрытия смен");
+                bot_send_dzh_all("Начало автоматического переоткрытия смен");
 
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt(); // Восстанавливаем прерванное состояние
-                System.err.println("Thread was interrupted, Failed to complete operation");
+                LocalDateTime now = LocalDateTime.now();
+                LocalTime closeTime = LocalTime.of(23, 59);
+                LocalTime openTime = LocalTime.of(0, 0);
+                LocalDate today = now.toLocalDate();
+                LocalDate tomorrow = today.plusDays(1);
+
+                List<MovementsEntity> openShifts = movementsRepo.findByExitTimeIsNull();
+
+                if (openShifts == null || openShifts.isEmpty()) {
+                    log.info("Нет смен для переоткрытия");
+                    bot_send_dzh_all("Нет смен для переоткрытия");
+                    return;
+                }
+
+                log.info("Найдено {} открытых смен для переоткрытия", openShifts.size());
+
+                openShifts.forEach(shift -> {
+                    try {
+                        processShift(shift, closeTime, openTime, tomorrow);
+                    } catch (Exception e) {
+                        log.error("Ошибка обработки смены для пользователя: {} на пункте: {}",
+                                shift.getNameUser(), shift.getPlace(), e);
+                        bot_send_dzh_all(String.format("Ошибка переоткрытия смены для: %s на пункте: %s",
+                                shift.getNameUser(), shift.getPlace()));
+                    }
+                });
+
+            } catch (Exception e) {
+                log.error("Критическая ошибка в процессе переоткрытия смен", e);
+                bot_send_dzh_all("Критическая ошибка в процессе переоткрытия смен");
+            } finally {
                 flag.set(false);
-            }finally{
-                System.out.println("установил флаг в finally");
-                flag.set(false);
-                bot_send_dzh_all("Устновил флаг :"+ flag);
+                log.info("Процесс переоткрытия смен завершен. Флаг: {}", flag.get());
+                bot_send_dzh_all("Завершено переоткрытие смен. Флаг: " + flag.get());
             }
-            flag.set(false);
-            System.out.println("Устновил флаг :"+ flag);
+        }
 
+
+        @Transactional(
+                propagation = Propagation.REQUIRES_NEW,
+                isolation = Isolation.REPEATABLE_READ,
+                rollbackFor = Exception.class
+        )
+        private void processShift(MovementsEntity shift, LocalTime closeTime, LocalTime openTime, LocalDate tomorrow) {
+            log.debug("Обработка смены для {} на пункте {}", shift.getNameUser(), shift.getPlace());
+
+            // Закрываем текущую смену
+            shift.setExitTime(closeTime.format(DateTimeFormatter.ofPattern("HH:mm")));
+            shift.setTimeAtPlace(countingTheTimeAtPlace(shift.getComingTime(), shift.getExitTime()));
+            shift.setOpenClose(shift.getOpenClose().equals("open") ? "openclose" : "close");
+
+            MovementsEntity savedShift = movementsRepo.save(shift);
+            log.debug("Сохранена закрытая смена: {}", savedShift.getIdmovements());
+
+            // Записываем время закрытия
+            closeWriteTime(shift.getIdUser());
+
+            // Открываем новую смену на следующий день
+            Optional.ofNullable(shift.getPlace())
+                    .filter(place -> !place.isEmpty())
+                    .ifPresent(place -> {
+                        createNewShift(shift.getIdUser(), place, openTime, tomorrow);
+                        String message = String.format("Переоткрыта смена: %s - %s", shift.getNameUser(), place);
+                        log.info(message);
+                        bot_send_dzh_all(message);
+                    });
+        }
+
+
+    @Transactional(
+            propagation = Propagation.REQUIRES_NEW,
+            isolation = Isolation.REPEATABLE_READ,
+            rollbackFor = Exception.class
+    )
+    private void createNewShift(Long userId, String place, LocalTime openTime, LocalDate date) {
+        UserEntity user = serviceUser.findByUserId(userId);
+        MovementsEntity newShift = new MovementsEntity();
+        newShift.setIdUser(userId);
+        newShift.setNameUser(user.getName());
+        newShift.setPositionUser(user.getPosition());
+        newShift.setDepartmentUser(user.getDepartment());
+        newShift.setComingTime(openTime.format(DateTimeFormatter.ofPattern("HH:mm")));
+        newShift.setDate(date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        newShift.setPlace(place);
+        newShift.setOpenClose("open");
+        movementsRepo.save(newShift);
     }
 
 

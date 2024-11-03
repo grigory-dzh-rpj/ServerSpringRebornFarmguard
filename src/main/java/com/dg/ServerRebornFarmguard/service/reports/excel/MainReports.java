@@ -1687,6 +1687,119 @@ public class MainReports {
 
 
 
+    /*Индивидуальные для энергетиков*/
+    public byte[] generateExcelForDateBetweenAndNameForHub(String dateRange, String userName) throws IOException {
+        DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        // Разбиваем строку на две даты
+        String[] dates = dateRange.split("/");
+        LocalDate startDate = LocalDate.parse(dates[0], formatter);
+        LocalDate endDate = LocalDate.parse(dates[1], formatter);
+        // Создание книги и листа с использованием XSSF для .xlsx формата
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet sheet = workbook.createSheet("Перемещения");
+
+        CellStyle headerStyle = workbook.createCellStyle();
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerStyle.setFont(headerFont);
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        headerStyle.setFillForegroundColor(IndexedColors.TURQUOISE.getIndex());
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+
+
+            List<Map<String, Object>> movements = jdbcTemplate.queryForList("SELECT * FROM movements_obsh WHERE name_user = ? AND date BETWEEN ? AND ?", userName, startDate, endDate);
+
+            if (movements.isEmpty()) {
+                System.out.println("Лист пустой");
+                return new byte[1];
+            }
+
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"ШК", "ФИО", "Должность", "Дата", "Время прихода", "Время ухода", "Пункт"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            sheet.setAutoFilter(new CellRangeAddress(0, 0, 0, headers.length - 1));
+
+
+            // Сортировка данных по именам (второй столбец)
+            movements.sort(Comparator.comparing(movement -> (String) movement.get("name_user")));
+
+            int rowNum = 1;
+            Duration totalEffectiveDuration = Duration.ZERO;
+            int startMergeRow = -1;
+
+            for (Map<String, Object> movement : movements) {
+                Row row = sheet.createRow(rowNum);
+
+                Cell idCell = row.createCell(0);
+                idCell.setCellValue((Long) movement.get("id_user"));
+
+                Cell nameCell = row.createCell(1);
+                nameCell.setCellValue((String) movement.get("name_user"));
+
+
+                Cell positionCell = row.createCell(2);
+                positionCell.setCellValue((String) movement.get("position_user"));
+
+
+                Cell dateCell = row.createCell(3);
+                dateCell.setCellValue(movement.get("date").toString());
+
+                Cell arrivalTimeCell = row.createCell(4);
+                String arrivalTimeString = (String) movement.get("coming_time");
+                LocalTime arrivalTime = null;
+                if (arrivalTimeString != null) {
+                    arrivalTime = LocalTime.parse(arrivalTimeString, TIME_FORMATTER);
+                    arrivalTimeCell.setCellValue(arrivalTime.toString());
+                }
+
+                Cell exitTimeCell = row.createCell(5);
+                String exitTimeString = (String) movement.get("exit_time");
+                LocalTime exitTime = null;
+                if (exitTimeString != null) {
+                    exitTime = LocalTime.parse(exitTimeString, TIME_FORMATTER);
+                    exitTimeCell.setCellValue(exitTime.toString());
+                }
+
+//                Cell durationCell = row.createCell(6);
+//
+//                if (arrivalTime != null && exitTime != null) {
+//                    Duration duration = Duration.between(arrivalTime, exitTime);
+//                    durationCell.setCellValue(formatDuration(duration));
+//                    totalEffectiveDuration = totalEffectiveDuration.plus(duration);
+//                }
+
+                Cell placeCell = row.createCell(6);
+                placeCell.setCellValue((String) movement.get("place"));
+
+
+                rowNum++;
+            }
+
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+//ЕСЛИ НЕ ХАБ
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+
+        return outputStream.toByteArray();
+    }
+
+
+
 
 
 }

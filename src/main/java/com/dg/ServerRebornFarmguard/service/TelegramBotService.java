@@ -92,17 +92,17 @@ public class TelegramBotService {
     @PostConstruct
     public void init() {
 
-        //ОСНОВНЫЕ БОТЫ
-//      createBot(telegramTokenMainProd);
+//        //ОСНОВНЫЕ БОТЫ
+      createBot(telegramTokenMainProd);
 
-//      createBotStatus(telegramTokenStatusProd);
+      createBotStatus(telegramTokenStatusProd);
 
 
 
 //      //Test
 
-      createBot(telegramTokenMainTest);
-      createBotStatus(telegramTokenStatusTest);
+//      createBot(telegramTokenMainTest);
+//      createBotStatus(telegramTokenStatusTest);
 
 
     }
@@ -1317,11 +1317,23 @@ public class TelegramBotService {
 
                         bot.execute(new SendMessage(chatId, "подготавливаю файл..."));
                         byte[] bytes = mainReports.generateExcelForDateBetweenAndUserName(date1, name_move);
-                        if(bytes.length == 1){
+                        byte[] bytes2 = mainReports.generateExcelForDateBetweenAndNameForHub(date1, name_move);
+
+                        boolean hasMoves = (bytes.length > 1) || (bytes2.length > 1);
+
+                        if(!hasMoves){
                             bot.execute(new SendMessage(chatId, "перемещения отсутствуют!"));
                         }else {
-                            sendExcelFile(chatId, bytes);
+                            if(bytes.length > 1) {
+                                sendExcelFile(chatId, bytes);
+                            }
+                            if(bytes2.length > 1){
+//                                bot.execute(new SendMessage(chatId, "формирую пере!"));
+                                sendExcelFile(chatId, bytes2);
+                            }
                         }
+
+
                     } catch (IOException e) {
                         sendNote(chatId, "что-то пошло не так , повторите попытку...");
                     }

@@ -2,10 +2,10 @@ package com.dg.ServerRebornFarmguard.controller;
 
 
 import com.dg.ServerRebornFarmguard.entity.MovementsElcEntity;
-import com.dg.ServerRebornFarmguard.entity.MovementsObshEntity;
 import com.dg.ServerRebornFarmguard.exception.ExceptionHttp;
 import com.dg.ServerRebornFarmguard.service.MovementsElcService;
-import com.dg.ServerRebornFarmguard.service.MovementsObshService;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +17,9 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/move_elc")
+@Slf4j
+@Tag(name = "НЕ ИСПОЛЬЗУЕТСЯ", description = "Создавалось как альтернатива хаба, если будет какая-то новая логика для определенных пунктов ")
+
 public class MovementsElcController {
 
     @Autowired
@@ -28,7 +31,7 @@ public class MovementsElcController {
         try {
             return ResponseEntity.ok(movementsElcService.logic(macIdPrefix));
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Ошибка /logic:",e);
             return ExceptionHttp.MainExeption();
         }
     }
@@ -40,6 +43,7 @@ public class MovementsElcController {
             List<MovementsElcEntity> movementsEntites = movementsElcService.nowOnPlace();
             return ResponseEntity.ok(movementsEntites);
         }catch (Exception e){
+            log.error("Ошибка /nowOnPlaceElc",e);
             return ExceptionHttp.MainExeption();
         }
     }

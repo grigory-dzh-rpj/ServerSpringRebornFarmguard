@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@EnableScheduling
 public class UserService {
 
     @Autowired
@@ -34,10 +33,7 @@ public class UserService {
        return usersNames;
     }
 
-    @Scheduled(fixedRate = 1000)
-    public void tetp(){
-        System.out.println("Идет работа");
-    }
+
 
     public List<UserEntity> findByPos(String pos) {
         return userRepo.findByPos(pos);

@@ -6,24 +6,22 @@ import com.pengrad.telegrambot.request.PinChatMessage;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.dg.ServerRebornFarmguard.service.TelegramBotService.bot_status;
 
 @Service
 @EnableScheduling
+@Slf4j
 public class CheckStatusPlacePlatsService {
 
     @Autowired
@@ -33,17 +31,12 @@ public class CheckStatusPlacePlatsService {
     private final Map<String, Long> lastRequestTimes = new ConcurrentHashMap<>();
     private final Map<String, Boolean> espStatuses = new ConcurrentHashMap<>();
     private final Map<Long, Integer> chatMessageIds = new ConcurrentHashMap<>();
+    private final Set<String> previousOffline = new HashSet<>();
     private static final String POINT_EMOJI = "\uD83D\uDCCD"; // 📍
     private static final String GREEN_CHECK_EMOJI = "✅";
     private static final String RED_CROSS_EMOJI = "❌";
 
-    public void updateLastRequestTime(String macAddress) {
-        lastRequestTimes.put(macAddress, System.currentTimeMillis());
-        espStatuses.put(macAddress, true);
-    }
-
-    /** */
-    @PostConstruct // Инициализация при запуске приложения
+    @PostConstruct
     public void initEspStatuses() {
         List<PlaceEntity> placeEntityList = placeService.returnAllPlaceEntity();
 
@@ -54,6 +47,10 @@ public class CheckStatusPlacePlatsService {
         }
     }
 
+    public void updateLastRequestTime(String macAddress) {
+        lastRequestTimes.put(macAddress, System.currentTimeMillis());
+        espStatuses.put(macAddress, true);
+    }
 
     @Scheduled(fixedRate = 2000)
     public void checkEspStatus() {
@@ -64,7 +61,6 @@ public class CheckStatusPlacePlatsService {
             if (currentTime - lastRequestTime > TIMEOUT_SECONDS * 1000) {
                 espStatuses.put(macAddress, false);
             }
-
         }
     }
 
@@ -74,7 +70,6 @@ public class CheckStatusPlacePlatsService {
         List<PlaceEntity> placeEntityList = placeService.returnAllPlaceEntity();
 
         List<Long> chatIds = listSysAdmins();
-        System.out.println(chatIds);
         for (Long chatId : chatIds) {
             StringBuilder messageBuilder = new StringBuilder("Статус пунктов:\n\n");
 
@@ -113,49 +108,44 @@ public class CheckStatusPlacePlatsService {
                     PinChatMessage pinChatMessage = new PinChatMessage(chatId.toString(), messageId);
                     bot_status.execute(pinChatMessage);
                 }catch (NullPointerException e){
-                    System.out.println("Кому-то не отрпавлено!");
+//                    log.info("Не отправлены уведомления:", e);
                 }
 
             }
         }
     }
 
-    Set<String> previousOffline = new HashSet<>();
-
-
-
+    /*Сообщение при потере связи*/
     @Scheduled(fixedRate = 10000)
     public void sendMessageByBotStatus2() {
         List<PlaceEntity> placeEntityList = placeService.returnAllPlaceEntity();
-            List<Long> chatIds = listSysAdmins();
+        List<Long> chatIds = listSysAdmins();
 
+        for (PlaceEntity placeEntity : placeEntityList) {
+            String macPlace = placeEntity.getMacPlace();
+            String placeName = placeEntity.getNamePlace();
+            boolean isOnline = isEspOnline(macPlace);
 
-
-            for (PlaceEntity placeEntity : placeEntityList) {
-                String macPlace = placeEntity.getMacPlace();
-                String placeName = placeEntity.getNamePlace();
-                boolean isOnline = isEspOnline(macPlace);
-
-                if (!isOnline) {
-                    if (!previousOffline.contains(macPlace)) {
-                        // Связь потеряна
-                        for (Long chatId : chatIds) {
-                            String message = "❌ Потеря связи с КП -> " + placeName;
-                            sendMessage(chatId, message);
-                        }
-                        previousOffline.add(macPlace);
+            if (!isOnline) {
+                if (!previousOffline.contains(macPlace)) {
+                    // Связь потеряна
+                    for (Long chatId : chatIds) {
+                        String message = "❌ Потеря связи с КП -> " + placeName;
+                        sendMessage(chatId, message);
                     }
-                } else {
-                    if (previousOffline.contains(macPlace)) {
-                        // Связь восстановлена
-                        for (Long chatId : chatIds) {
-                            String message = "✅ Связь с КП -> " + placeName + " восстановлена!";
-                            sendMessage(chatId, message);
-                        }
-                        previousOffline.remove(macPlace);
+                    previousOffline.add(macPlace);
+                }
+            } else {
+                if (previousOffline.contains(macPlace)) {
+                    // Связь восстановлена
+                    for (Long chatId : chatIds) {
+                        String message = "✅ Связь с КП -> " + placeName + " восстановлена!";
+                        sendMessage(chatId, message);
                     }
+                    previousOffline.remove(macPlace);
                 }
             }
+        }
 
     }
 
@@ -163,34 +153,28 @@ public class CheckStatusPlacePlatsService {
         SendMessage message = new SendMessage(chatId.toString(), text);
         SendResponse sendResponse = bot_status.execute(message);
         if (sendResponse != null && sendResponse.isOk()) {
-//            System.out.println("Message sent successfully to chat " + chatId);
         } else {
-            System.out.println("Failed to send message to chat " + chatId);
+//            System.out.println("Failed to send message to chat " + chatId);
             if (sendResponse != null) {
-                System.out.println("Error code: " + sendResponse.errorCode() + ", Description: " + sendResponse.description());
+//                System.out.println("Error code: " + sendResponse.errorCode() + ", Description: " + sendResponse.description());
             }
         }
     }
-
-
-
-
 
     public boolean isEspOnline(String macAddress) {
         return espStatuses.getOrDefault(macAddress, false);
     }
 
-
     public List<Long> listSysAdmins(){
-        List<Long> chatIds;
-        try(BufferedReader bufferedReader = new BufferedReader(new FileReader("/Users/Spring Projects/Beckend Ferma Work Project/SpringFarmguard/src/main/resources/arrayChatIdForStatusBot.txt"))) {
-            chatIds = bufferedReader.lines().map(String::trim).map(Long::parseLong).toList();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        System.out.println(chatIds);
+        List<Long> chatIds = List.of(667788774L, 929477908L,5087116051L ,1139708989L ,434612982L, 2057585812L , 453373063L,
+                99110162239L);
+//        try(BufferedReader bufferedReader = new BufferedReader(new FileReader("/arrayChatIdForStatusBot.txt"))) {
+//            chatIds = bufferedReader.lines().map(String::trim).map(Long::parseLong).toList();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
+//        log.info("Список сотрудников для оповещения: " + chatIds);
         return chatIds;
     }
-
 
 }

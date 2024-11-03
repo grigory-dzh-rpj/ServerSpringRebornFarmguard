@@ -1,0 +1,5 @@
+scp /Users/Spring\ Projects/Beckend\ Ferma\ Work\ Project/SpringFarmguard/build/libs/app.jar  supervisor@146.0.79.146:/home/supervisor/FARMGUARD
+
+cp app.jar farmguard_app_1:/app.jar
+
+
