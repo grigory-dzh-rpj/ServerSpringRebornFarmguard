@@ -7,6 +7,7 @@ import com.dg.ServerRebornFarmguard.service.reports.excel.CreateDiagrams;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.request.SendMessage;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -24,9 +25,14 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeUnit;
+
 
 import static com.dg.ServerRebornFarmguard.service.TelegramBotService.getBot;
 
@@ -306,9 +312,10 @@ public class MovementsService {
 
             if(openDate.isEqual(closeDate)) {
                 LocalTime comingTime = LocalTime.parse(openMovement.getComingTime(), DateTimeFormatter.ofPattern("HH:mm"));
-                LocalTime now = LocalTime.now();
+//                LocalTime now = LocalTime.now();
+                LocalTime exitTime = LocalTime.parse(lastMovement.getExitTime(), DateTimeFormatter.ofPattern("HH:mm"));
 
-                Duration duration = Duration.between(comingTime, now);
+                Duration duration = Duration.between(comingTime, exitTime);
                 long hours = duration.toHours();
                 long minutes = duration.toMinutesPart();
                 String openCloseTime = String.format("%02d:%02d", hours, minutes);
@@ -608,12 +615,17 @@ public class MovementsService {
             closeStatus(id);
             closeWriteTime(id);
 
-            String totalTime = movementsEntity1.get().getOpenCloseTime();
-            String localNow = getNowDayOfMonth();
-            String effTime = createDiagrams.effectiveTime(String.valueOf(id), localNow , localNow);
-            bot.execute(new SendMessage(chatId, "Смена закрыта: "));
-            bot.execute(new SendMessage(chatId, "Итого эффективное время: "+ effTime));
-            bot.execute(new SendMessage(chatId, "Итого общее время: "+ totalTime));
+            movementsEntity1 = movementsRepo.findTopByIdUserOrderByIdmovementsDesc(id);
+            if (movementsEntity1.isPresent()) {
+                log.debug("Обновленные данные о смене: {}", movementsEntity1.get());
+                String totalTime = movementsEntity1.get().getOpenCloseTime();
+                String localNow = getNowDayOfMonth();
+                String effTime = createDiagrams.effectiveTime(String.valueOf(id), localNow, localNow);
+
+                bot.execute(new SendMessage(chatId, "Смена закрыта: "));
+                bot.execute(new SendMessage(chatId, "Итого эффективное время: " + effTime));
+                bot.execute(new SendMessage(chatId, "Итого общее время: " + totalTime));
+            }
 
         }else{
             bot.execute(new SendMessage(chatId, "Смена не закрыта!"));
@@ -709,122 +721,22 @@ public class MovementsService {
     }
 
 
-//    private  AtomicBoolean flag = new AtomicBoolean(false);
-
-
-//    public void writeComingAndOpenNewDayAfterMidnight(Long id, String place) {
-//
-//        UserEntity entityUser = serviceUser.findByUserId(id);
-//        MovementsEntity movementsEntity = new MovementsEntity();
-//
-//        movementsEntity.setIdUser(id);
-//        movementsEntity.setNameUser(entityUser.getName());
-//        movementsEntity.setPositionUser(entityUser.getPosition());
-//        movementsEntity.setDepartmentUser(entityUser.getDepartment());
-//        movementsEntity.setComingTime("00:00");
-//        movementsEntity.setDate(dateNow());
-//        movementsEntity.setPlace(place);
-//        movementsEntity.setOpenClose("open");
-//
-//        movementsRepo.save(movementsEntity);
-//
-//    }
-//
-//
-//
-//        @Scheduled(cron = "20 59 23 * * ?")
-////    @Scheduled(cron = "55 36 12 * * ?")
-//    public void autoCloseAndOpenFor00(){
-//        flag.set(true);
-//        System.out.println("Автопереоткрытие работает");
-//            bot_send_dzh_all("Автопереоткрытие начало работу!");
-//        List<MovementsEntity> entities = movementsRepo.findByExitTimeIsNull();
-//
-//           if (entities == null) {
-//               flag.set(false);
-//               bot_send_dzh_all("Ошибка получения данных из базы данных.");
-//            System.out.println("Ошибка получения данных из базы данных.");
-//            return;
-//        }
-//
-//            if(entities.isEmpty()) {
-//                flag.set(false);
-//                System.out.println("Никому не потребовалось переоткрыть смену");
-//                bot_send_dzh_all("Никому не потребовалось переоткрыть смену");
-//                bot_send_dzh_all("Устновил флаг :"+ flag);
-//                System.out.println("Устновил флаг :"+ flag);
-//                return;
-//            }
-//
-//            System.out.println("entitities не null");
-//
-//            for (MovementsEntity movementsEntity : entities) {
-//                System.out.println("перехожу к итерации");
-//                movementsEntity.setExitTime(localTimeNow());
-//                String timeAtPlace = countingTheTimeAtPlace(movementsEntity.getComingTime(), movementsEntity.getExitTime());
-//                movementsEntity.setTimeAtPlace(timeAtPlace);
-//                String place = movementsEntity.getPlace();
-//                System.out.println("Пункт для переотрктия " + place);
-//                if (movementsEntity.getOpenClose().equals("open")) {
-//
-//                    movementsEntity.setOpenClose("openclose");
-//                } else {
-//                    movementsEntity.setOpenClose("close");
-//                }
-//
-//                movementsRepo.save(movementsEntity);
-//                System.out.println("Сохранил ент");
-//                System.out.println("считаю время");
-//                closeWriteTime(movementsEntity.getIdUser());
-//
-//                if (!place.equals("")) {
-//
-//                    writeComingAndOpenNewDayAfterMidnight(movementsEntity.getIdUser(), place);
-//                    bot_send_dzh_all("Переоткрыл: " + movementsEntity.getNameUser()+ " " + movementsEntity.getPlace());
-//
-//                    System.out.println("Переоткрыл: " + movementsEntity.getNameUser() + movementsEntity.getPlace());
-//                }else{
-//                    System.out.println("Place null ");
-//                }
-//            }
-//            try {
-//                System.out.println("Ждем 70 сек");
-//                Thread.sleep(70000); // 70 секунд
-//
-//            } catch (InterruptedException e) {
-//                Thread.currentThread().interrupt(); // Восстанавливаем прерванное состояние
-//                System.err.println("Thread was interrupted, Failed to complete operation");
-//                flag.set(false);
-//            }finally{
-//                System.out.println("установил флаг в finally");
-//                flag.set(false);
-//                bot_send_dzh_all("Устновил флаг :"+ flag);
-//            }
-//            flag.set(false);
-//            System.out.println("Устновил флаг :"+ flag);
-//
-//    }
-
-
 
         private final AtomicBoolean flag = new AtomicBoolean(false);
 
-        @Scheduled(cron = "0 59 23 * * ?")
+        @Scheduled(cron = "30 59 23 * * ?")
         @Transactional(
                 isolation = Isolation.REPEATABLE_READ,
                 rollbackFor = Exception.class,
                 timeout = 30
         )
         public void autoCloseAndOpenFor00() {
-            if (!flag.compareAndSet(false, true)) {
-                log.warn("Предыдущая операция все еще выполняется");
-                return;
-            }
+
 
             try {
                 log.info("Запуск автоматического переоткрытия смен");
-                bot_send_dzh_all("Начало автоматического переоткрытия смен");
-
+                bot_send_dzh_all("Началось автоматическое переоткрые смен");
+                executorService.submit(this::blockedAccess);
                 LocalDateTime now = LocalDateTime.now();
                 LocalTime closeTime = LocalTime.of(23, 59);
                 LocalTime openTime = LocalTime.of(0, 0);
@@ -852,13 +764,15 @@ public class MovementsService {
                     }
                 });
 
+
+
             } catch (Exception e) {
                 log.error("Критическая ошибка в процессе переоткрытия смен", e);
                 bot_send_dzh_all("Критическая ошибка в процессе переоткрытия смен");
             } finally {
-                flag.set(false);
-                log.info("Процесс переоткрытия смен завершен. Флаг: {}", flag.get());
-                bot_send_dzh_all("Завершено переоткрытие смен. Флаг: " + flag.get());
+                var message = String.format("Процесс переоткрытия смен завершен в " +LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) +". Флаг блокировки сейчас: %s", flag.get());
+                log.info(message);
+                bot_send_dzh_all(message);
             }
         }
 
@@ -887,11 +801,51 @@ public class MovementsService {
                     .filter(place -> !place.isEmpty())
                     .ifPresent(place -> {
                         createNewShift(shift.getIdUser(), place, openTime, tomorrow);
-                        String message = String.format("Переоткрыта смена: %s - %s", shift.getNameUser(), place);
+                        String message = String.format("Переоткрыта смена: Сотрудник: %s , Пункт: %s", shift.getNameUser(), place);
                         log.info(message);
                         bot_send_dzh_all(message);
                     });
         }
+
+
+
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    @PreDestroy
+    public void shutdown() {
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(20, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void blockedAccess() {
+        // Устанавливаем флаг блокировки
+        if (!flag.compareAndSet(false, true)) {
+            log.warn("Предыдущая операция все еще выполняется");
+            return; // Если операция уже выполняется, выходим
+        }
+
+        bot_send_dzh_all("Блокировка установлена!");
+
+        try {
+            log.info("Ждем 30 секунд для блокировки доступа");
+            Thread.sleep(30000); // Блокировка на 30 секунд
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // Восстанавливаем прерванное состояние
+            log.error("Поток был прерван, не удалось завершить операцию", e);
+        } finally {
+            // Сбрасываем флаг блокировки
+            flag.set(false);
+            log.info("Блокировка на вход снята: {}", flag.get());
+            bot_send_dzh_all("Блокировка на перемещения снята! Флаг:  " + flag.get());
+        }
+    }
+
 
 
     @Transactional(
